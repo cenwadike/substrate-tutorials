@@ -1,0 +1,105 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+	use frame_support::pallet_prelude::*;
+	use frame_system::pallet_prelude::*;
+
+	// The struct on which we build all of our Pallet logic.
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	pub struct Pallet<T>(_);
+
+	/* Placeholder for defining custom types. */
+
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		/// to contrain the maximum size of hash proof
+		type MaxBytesInHash: Get<u32>;
+	}
+
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// event emitted when a proof is claimed [who, claim]
+		ClaimCreated(T::AccountId, BoundedVec<u8, T::MaxBytesInHash>),
+		/// event emitted when a proof is revoked [who, claim]
+		ClaimRevoked(T::AccountId, BoundedVec<u8, T::MaxBytesInHash>),
+	}
+
+	#[pallet::error]
+	pub enum Error<T> {
+		/// proof already claimed
+		ProofAlreadyClaimed,
+		/// proof does not exist; cannot be revoked
+		NoSuchProof,
+		/// proof claimed by another; caller cannot revoke
+		NotProofOwner,
+	}
+
+	#[pallet::storage]
+	/// map each proof to owner and block number
+	pub(super) type Proofs<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		BoundedVec<u8, T::MaxBytesInHash>,
+		(T::AccountId, T::BlockNumber),
+		OptionQuery,
+	>;
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(1_000)]
+		/// dispatchable to claim ownership of a proof
+		pub fn create_claim(
+			origin: OriginFor<T>,
+			proof: BoundedVec<u8, T::MaxBytesInHash>,
+		) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let sender = ensure_signed(origin)?;
+
+			// Verify that the specified proof has not already been claimed.
+			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
+
+			// Get the block number from the FRAME System pallet.
+			let current_block = <frame_system::Pallet<T>>::block_number();
+
+			// Store the proof with the sender and block number.
+			Proofs::<T>::insert(&proof, (&sender, current_block));
+
+			// Emit an event that the claim was created.
+			Self::deposit_event(Event::ClaimCreated(sender, proof));
+
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn revoke_claim(
+			origin: OriginFor<T>,
+			proof: BoundedVec<u8, T::MaxBytesInHash>,
+		) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let sender = ensure_signed(origin)?;
+
+			// Verify that the specified proof has been claimed.
+			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
+
+			// Get owner of the claim.
+			// Panic condition: there is no way to set a `None` owner, so this must always unwrap.
+			let (owner, _) = Proofs::<T>::get(&proof).expect("All proofs must have an owner!");
+
+			// Verify that sender of the current call is the claim owner.
+			ensure!(sender == owner, Error::<T>::NotProofOwner);
+
+			// Remove claim from storage.
+			Proofs::<T>::remove(&proof);
+
+			// Emit an event that the claim was erased.
+			Self::deposit_event(Event::ClaimRevoked(sender, proof));
+			Ok(())
+		}
+	}
+}
