@@ -50,56 +50,56 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
-	// #[pallet::call]
-	// impl<T: Config> Pallet<T> {
-	// 	#[pallet::weight(1_000)]
-	// 	/// dispatchable to claim ownership of a proof
-	// 	pub fn create_claim(
-	// 		origin: OriginFor<T>,
-	// 		proof: BoundedVec<u8, T::MaxBytesInHash>,
-	// 	) -> DispatchResult {
-	// 		// Check that the extrinsic was signed and get the signer.
-	// 		let sender = ensure_signed(origin)?;
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
+		#[pallet::weight(1_000)]
+		/// dispatchable to claim ownership of a proof
+		pub fn create_claim(
+			origin: OriginFor<T>,
+			proof: BoundedVec<u8, T::MaxBytesInHash>,
+		) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let sender = ensure_signed(origin)?;
 
-	// 		// Verify that the specified proof has not already been claimed.
-	// 		ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
+			// Verify that the specified proof has not already been claimed.
+			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
 
-	// 		// Get the block number from the FRAME System pallet.
-	// 		let current_block = <frame_system::Pallet<T>>::block_number();
+			// Get the block number from the FRAME System pallet.
+			let current_block = <frame_system::Pallet<T>>::block_number();
 
-	// 		// Store the proof with the sender and block number.
-	// 		Proofs::<T>::insert(&proof, (&sender, current_block));
+			// Store the proof with the sender and block number.
+			Proofs::<T>::insert(&proof, (&sender, current_block));
 
-	// 		// Emit an event that the claim was created.
-	// 		Self::deposit_event(Event::ClaimCreated(sender, proof));
+			// Emit an event that the claim was created.
+			Self::deposit_event(Event::ClaimCreated(sender, proof));
 
-	// 		Ok(())
-	// 	}
+			Ok(())
+		}
 
-	// 	#[pallet::weight(10_000)]
-	// 	pub fn revoke_claim(
-	// 		origin: OriginFor<T>,
-	// 		proof: BoundedVec<u8, T::MaxBytesInHash>,
-	// 	) -> DispatchResult {
-	// 		// Check that the extrinsic was signed and get the signer.
-	// 		let sender = ensure_signed(origin)?;
+		#[pallet::weight(10_000)]
+		pub fn revoke_claim(
+			origin: OriginFor<T>,
+			proof: BoundedVec<u8, T::MaxBytesInHash>,
+		) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let sender = ensure_signed(origin)?;
 
-	// 		// Verify that the specified proof has been claimed.
-	// 		ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
+			// Verify that the specified proof has been claimed.
+			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
 
-	// 		// Get owner of the claim.
-	// 		// Panic condition: there is no way to set a `None` owner, so this must always unwrap.
-	// 		let (owner, _) = Proofs::<T>::get(&proof).expect("All proofs must have an owner!");
+			// Get owner of the claim.
+			// Panic condition: there is no way to set a `None` owner, so this must always unwrap.
+			let (owner, _) = Proofs::<T>::get(&proof).expect("All proofs must have an owner!");
 
-	// 		// Verify that sender of the current call is the claim owner.
-	// 		ensure!(sender == owner, Error::<T>::NotProofOwner);
+			// Verify that sender of the current call is the claim owner.
+			ensure!(sender == owner, Error::<T>::NotProofOwner);
 
-	// 		// Remove claim from storage.
-	// 		Proofs::<T>::remove(&proof);
+			// Remove claim from storage.
+			Proofs::<T>::remove(&proof);
 
-	// 		// Emit an event that the claim was erased.
-	// 		Self::deposit_event(Event::ClaimRevoked(sender, proof));
-	// 		Ok(())
-	// 	}
+			// Emit an event that the claim was erased.
+			Self::deposit_event(Event::ClaimRevoked(sender, proof));
+			Ok(())
+		}
 	}
 }
